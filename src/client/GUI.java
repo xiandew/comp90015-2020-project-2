@@ -51,10 +51,10 @@ public class GUI {
 		frmMain.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		frmMain.getContentPane().setLayout(null);
 
-		JPanel panelWhiteBoard = new Board();
+		Board panelWhiteBoard = new Board();
 		panelWhiteBoard.setBorder(new LineBorder(new Color(0, 0, 0)));
-		panelWhiteBoard.setBackground(Color.WHITE);
 		panelWhiteBoard.setBounds(14, 13, 619, 551);
+		panelWhiteBoard.initCanvas();
 		frmMain.getContentPane().add(panelWhiteBoard);
 		panelWhiteBoard.setLayout(null);
 
@@ -110,7 +110,7 @@ public class GUI {
 		rdbtnText.setBounds(231, 577, 61, 27);
 		frmMain.getContentPane().add(rdbtnText);
 		buttonGroupBoardOperators.add(rdbtnText);
-		
+
 		JRadioButton rdbtnEraser = new JRadioButton("Eraser");
 		rdbtnEraser.setBounds(298, 577, 77, 27);
 		frmMain.getContentPane().add(rdbtnEraser);
