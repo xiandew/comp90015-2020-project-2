@@ -1,18 +1,20 @@
 package client;
 
 import java.awt.EventQueue;
+import java.awt.Color;
+import java.awt.event.ActionListener;
+import java.util.Enumeration;
+import java.awt.event.ActionEvent;
 
 import javax.swing.JFrame;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
-
-import java.awt.Color;
 import javax.swing.JScrollPane;
+import javax.swing.AbstractButton;
 import javax.swing.ButtonGroup;
 import javax.swing.border.LineBorder;
 import javax.swing.JLabel;
-import java.awt.event.ActionListener;
-import java.awt.event.ActionEvent;
+import javax.swing.JOptionPane;
 
 public class GUI {
 
@@ -39,6 +41,10 @@ public class GUI {
 	 */
 	public GUI() {
 		initialize();
+	}
+
+	public void showMessageDialog(String msg) {
+		JOptionPane.showMessageDialog(null, msg);
 	}
 
 	/**
@@ -84,36 +90,47 @@ public class GUI {
 		scrollPaneUsers.setBounds(14, 23, 282, 266);
 		panelUsers.add(scrollPaneUsers);
 
-		ButtonGroup buttonGroupBoardOperators = new ButtonGroup();
+		ButtonGroup buttonGroupBoardOperations = new ButtonGroup();
 
-		JRadioButton rdbtnRect = new JRadioButton("Rect");
-		rdbtnRect.setBounds(164, 577, 61, 27);
-		frmMain.getContentPane().add(rdbtnRect);
-		buttonGroupBoardOperators.add(rdbtnRect);
-
-		JRadioButton rdbtnCircle = new JRadioButton("Circle");
-		rdbtnCircle.setBounds(81, 577, 77, 27);
-		frmMain.getContentPane().add(rdbtnCircle);
-		buttonGroupBoardOperators.add(rdbtnCircle);
-
-		JRadioButton rdbtnLine = new JRadioButton("Line");
+		JRadioButton rdbtnLine = new JRadioButton(Board.BoardOperation.LINE.toString());
 		rdbtnLine.setSelected(true);
 		rdbtnLine.setBounds(14, 577, 61, 27);
 		frmMain.getContentPane().add(rdbtnLine);
-		buttonGroupBoardOperators.add(rdbtnLine);
+		buttonGroupBoardOperations.add(rdbtnLine);
 
-		JRadioButton rdbtnText = new JRadioButton("Text");
-		rdbtnText.addActionListener(new ActionListener() {
-			public void actionPerformed(ActionEvent arg0) {
-			}
-		});
+		JRadioButton rdbtnCircle = new JRadioButton(Board.BoardOperation.CIRCLE.toString());
+		rdbtnCircle.setBounds(81, 577, 77, 27);
+		frmMain.getContentPane().add(rdbtnCircle);
+		buttonGroupBoardOperations.add(rdbtnCircle);
+
+		JRadioButton rdbtnRect = new JRadioButton(Board.BoardOperation.RECT.toString());
+		rdbtnRect.setBounds(164, 577, 61, 27);
+		frmMain.getContentPane().add(rdbtnRect);
+		buttonGroupBoardOperations.add(rdbtnRect);
+
+		JRadioButton rdbtnText = new JRadioButton(Board.BoardOperation.TEXT.toString());
 		rdbtnText.setBounds(231, 577, 61, 27);
 		frmMain.getContentPane().add(rdbtnText);
-		buttonGroupBoardOperators.add(rdbtnText);
+		buttonGroupBoardOperations.add(rdbtnText);
 
-		JRadioButton rdbtnEraser = new JRadioButton("Eraser");
+		JRadioButton rdbtnEraser = new JRadioButton(Board.BoardOperation.ERASER.toString());
 		rdbtnEraser.setBounds(298, 577, 77, 27);
 		frmMain.getContentPane().add(rdbtnEraser);
-		buttonGroupBoardOperators.add(rdbtnEraser);
+		buttonGroupBoardOperations.add(rdbtnEraser);
+
+		ActionListener selectBoardOperation = new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				panelWhiteBoard.selectedOperation = Board.BoardOperation
+						.valueOf(((JRadioButton) e.getSource()).getText());
+			}
+		};
+
+		// Bind button listener
+		Enumeration<AbstractButton> elements = buttonGroupBoardOperations.getElements();
+		while (elements.hasMoreElements()) {
+			AbstractButton button = (AbstractButton) elements.nextElement();
+			button.addActionListener(selectBoardOperation);
+		}
 	}
 }
