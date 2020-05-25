@@ -25,24 +25,22 @@ public class Board extends JPanel {
 	private Image canvas;
 	private Graphics2D canvasG2d;
 
-	// For eraser
 	private Graphics2D eraserG2d;
 
 	private Color bgColor = Color.WHITE;
 	private Color paintColor = Color.BLACK;
 
-	private Point startPoint;
-	private Point endPoint;
-
-	// TextField for drawString
-	private JTextField tf;
-
 	public Board() {
-		startPoint = new Point();
-		endPoint = new Point();
-		BoardMouseListener listener = new BoardMouseListener();
-		addMouseListener(listener);
-		addMouseMotionListener(listener);
+		ShapePainter shapePainter = new ShapePainter();
+		addMouseListener(shapePainter);
+		addMouseMotionListener(shapePainter);
+
+		TextPainter textPainter = new TextPainter();
+		addMouseListener(textPainter);
+
+		Eraser eraser = new Eraser();
+		addMouseListener(eraser);
+		addMouseMotionListener(eraser);
 	}
 
 	public void initCanvas() {
@@ -65,51 +63,6 @@ public class Board extends JPanel {
 		g.drawImage(canvasBuffer, 0, 0, null);
 	}
 
-	public void drawLine(Graphics2D g) {
-		g.drawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
-	}
-
-	public void drawCircle(Graphics2D g) {
-		int diameter = Math.min(Math.abs(startPoint.x - endPoint.x), Math.abs(startPoint.y - endPoint.y));
-		g.drawOval(Math.min(startPoint.x, endPoint.x), Math.min(startPoint.y, endPoint.y), diameter, diameter);
-	}
-
-	public void drawRect(Graphics2D g) {
-		g.drawRect(Math.min(startPoint.x, endPoint.x), Math.min(startPoint.y, endPoint.y),
-				Math.abs(startPoint.x - endPoint.x), Math.abs(startPoint.y - endPoint.y));
-	}
-
-	/**
-	 * Create a textField on the board for the user to enter a string
-	 * 
-	 * @param x
-	 * @param y
-	 */
-	public void addTextField(int x, int y) {
-		tf = new JTextField();
-		tf.setBounds(x, y, 300, 24);
-		this.add(tf);
-	}
-
-	/**
-	 * Draw the text onto the shared canvas and remove the textField
-	 * 
-	 * @param g Graphics object to draw with
-	 */
-	public void drawString(Graphics2D g) {
-		g.drawString(tf.getText(), tf.getX(), tf.getY());
-		this.remove(tf);
-		tf = null;
-	}
-
-	public void erase() {
-		eraserG2d.drawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
-
-		// Update the start point for free drawing
-		startPoint.x = endPoint.x;
-		startPoint.y = endPoint.y;
-	}
-
 	public void clear(Graphics2D g) {
 		g.setPaint(bgColor);
 		g.fillRect(0, 0, getSize().width, getSize().height);
@@ -117,7 +70,44 @@ public class Board extends JPanel {
 		repaint();
 	}
 
-	class BoardMouseListener extends MouseAdapter {
+	class TextPainter extends MouseAdapter {
+		private JTextField tf;
+
+		@Override
+		public void mouseClicked(MouseEvent e) {
+			if (selectedOperation == BoardOperation.TEXT && tf == null) {
+				// Create a textField on the board for the user to enter a string
+				tf = new JTextField();
+				tf.setBounds(e.getX(), e.getY(), 300, 24);
+				Board.this.add(tf);
+			}
+		}
+
+		@Override
+		public void mousePressed(MouseEvent e) {
+			if (tf != null) {
+				// Draw the text onto the shared canvas and remove the textField
+				canvasG2d.drawString(tf.getText(), tf.getX(), tf.getY());
+				Board.this.remove(tf);
+				tf = null;
+
+				clear(canvasBufferG2d);
+				canvasBufferG2d.drawImage(canvas, 0, 0, null);
+				repaint();
+			}
+		}
+	}
+
+	class ShapePainter extends MouseAdapter {
+		protected Point startPoint;
+		protected Point endPoint;
+
+		public ShapePainter() {
+			super();
+			startPoint = new Point();
+			endPoint = new Point();
+		}
+
 		@Override
 		public void mousePressed(MouseEvent e) {
 			setStartPoint(e.getX(), e.getY());
@@ -130,22 +120,7 @@ public class Board extends JPanel {
 			clear(canvasBufferG2d);
 			canvasBufferG2d.drawImage(canvas, 0, 0, null);
 
-			switch (selectedOperation) {
-			case LINE:
-				drawLine(canvasBufferG2d);
-				break;
-			case CIRCLE:
-				drawCircle(canvasBufferG2d);
-				break;
-			case RECT:
-				drawRect(canvasBufferG2d);
-				break;
-			case ERASER:
-				erase();
-				break;
-			default:
-				// Do nothing
-			}
+			drawShape(canvasBufferG2d);
 
 			repaint();
 		}
@@ -155,37 +130,12 @@ public class Board extends JPanel {
 			setEndPoint(e.getX(), e.getY());
 
 			// Propagate changes onto the shared canvas
-			switch (selectedOperation) {
-			case LINE:
-				drawLine(canvasG2d);
-				break;
-			case CIRCLE:
-				drawCircle(canvasG2d);
-				break;
-			case RECT:
-				drawRect(canvasG2d);
-				break;
-			default:
-				// Do nothing
-			}
+			drawShape(canvasG2d);
 
 			clear(canvasBufferG2d);
 			canvasBufferG2d.drawImage(canvas, 0, 0, null);
-			repaint();
-		}
 
-		@Override
-		public void mouseClicked(MouseEvent e) {
-			if (selectedOperation == BoardOperation.TEXT) {
-				if (tf == null) {
-					addTextField(e.getX(), e.getY());
-				} else {
-					drawString(canvasG2d);
-					clear(canvasBufferG2d);
-					canvasBufferG2d.drawImage(canvas, 0, 0, null);
-					repaint();
-				}
-			}
+			repaint();
 		}
 
 		public void setStartPoint(int x, int y) {
@@ -196,6 +146,56 @@ public class Board extends JPanel {
 		public void setEndPoint(int x, int y) {
 			endPoint.x = x;
 			endPoint.y = y;
+		}
+
+		public void drawShape(Graphics2D g) {
+			switch (selectedOperation) {
+			case LINE:
+				drawLine(g);
+				break;
+			case CIRCLE:
+				drawCircle(g);
+				break;
+			case RECT:
+				drawRect(g);
+				break;
+			default:
+				break;
+			}
+		}
+
+		public void drawLine(Graphics2D g) {
+			g.drawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+		}
+
+		public void drawCircle(Graphics2D g) {
+			int diameter = Math.min(Math.abs(startPoint.x - endPoint.x), Math.abs(startPoint.y - endPoint.y));
+			g.drawOval(Math.min(startPoint.x, endPoint.x), Math.min(startPoint.y, endPoint.y), diameter, diameter);
+		}
+
+		public void drawRect(Graphics2D g) {
+			g.drawRect(Math.min(startPoint.x, endPoint.x), Math.min(startPoint.y, endPoint.y),
+					Math.abs(startPoint.x - endPoint.x), Math.abs(startPoint.y - endPoint.y));
+		}
+	}
+
+	class Eraser extends ShapePainter {
+		@Override
+		public void mouseDragged(MouseEvent e) {
+			setEndPoint(e.getX(), e.getY());
+
+			if (selectedOperation == BoardOperation.ERASER) {
+				eraserG2d.drawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+
+				// Update the start point for free drawing
+				startPoint.x = endPoint.x;
+				startPoint.y = endPoint.y;
+			}
+		}
+
+		@Override
+		public void mouseReleased(MouseEvent e) {
+			// Do nothing
 		}
 	}
 
