@@ -9,15 +9,14 @@ import java.awt.Point;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.image.BufferedImage;
-import java.rmi.RemoteException;
+import java.util.HashMap;
 import java.util.LinkedList;
-import java.util.NoSuchElementException;
 import javax.swing.JPanel;
 import javax.swing.JTextField;
 
 import org.json.JSONObject;
 
-import remote.ICollaborator;
+import utils.ActionType;
 
 public class Board extends JPanel {
 	private static final long serialVersionUID = 1L;
@@ -35,12 +34,12 @@ public class Board extends JPanel {
 	private Color bgColor = Color.WHITE;
 	private Color paintColor = Color.BLACK;
 
-	public BoardAction selectedAction = BoardAction.LINE;
+	public ActionType selectedAction = ActionType.LINE;
 
 	// Data to be broadcasted
-	private LinkedList<JSONObject> broadcastingQueue = new LinkedList<>();
+	public LinkedList<JSONObject> boardActionQueue = new LinkedList<>();
 
-	public Board(ICollaborator c) {
+	public Board() {
 		ShapePainter shapePainter = new ShapePainter();
 		addMouseListener(shapePainter);
 		addMouseMotionListener(shapePainter);
@@ -51,41 +50,32 @@ public class Board extends JPanel {
 		Eraser eraser = new Eraser();
 		addMouseListener(eraser);
 		addMouseMotionListener(eraser);
-
-		new Thread(() -> {
-			while (true) {
-				try {
-					JSONObject data = broadcastingQueue.remove();
-					c.broadcast(data.toString());
-				} catch (NoSuchElementException e) {
-					// Queue is empty, do nothing
-				} catch (RemoteException e) {
-					e.printStackTrace();
-					GUI.showMessageDialog("Unable to broadcast messages");
-					break;
-				}
-			}
-		}).start();
 	}
 
 	public void initCanvas() {
-		canvasBuffer = new BufferedImage(getSize().width, getSize().height, BufferedImage.TYPE_INT_RGB);
-		canvasBufferG2d = (Graphics2D) canvasBuffer.getGraphics();
-		this.clear(canvasBufferG2d);
+		this.canvasBuffer = new BufferedImage(getSize().width, getSize().height, BufferedImage.TYPE_INT_RGB);
+		this.canvasBufferG2d = (Graphics2D) this.canvasBuffer.getGraphics();
+		this.clear(this.canvasBufferG2d);
 
-		canvas = new BufferedImage(getSize().width, getSize().height, BufferedImage.TYPE_INT_RGB);
-		canvasG2d = (Graphics2D) canvas.getGraphics();
-		this.clear(canvasG2d);
+		this.canvas = new BufferedImage(getSize().width, getSize().height, BufferedImage.TYPE_INT_RGB);
+		this.canvasG2d = (Graphics2D) this.canvas.getGraphics();
+		this.clear(this.canvasG2d);
 
-		eraserG2d = (Graphics2D) canvasG2d.create();
-		eraserG2d.setPaint(bgColor);
-		eraserG2d.setStroke(new BasicStroke(10));
+		this.eraserG2d = (Graphics2D) this.canvasG2d.create();
+		this.eraserG2d.setPaint(this.bgColor);
+		this.eraserG2d.setStroke(new BasicStroke(10));
 	}
 
 	@Override
 	public void paintComponent(Graphics g) {
 		super.paintComponent(g);
 		g.drawImage(canvasBuffer, 0, 0, null);
+	}
+
+	public void clear() {
+		this.clear(canvasBufferG2d);
+		this.clear(canvasG2d);
+		repaint();
 	}
 
 	private void clear(Graphics2D g) {
@@ -109,7 +99,7 @@ public class Board extends JPanel {
 				Math.abs(startPoint.x - endPoint.x), Math.abs(startPoint.y - endPoint.y));
 	}
 
-	private void drawShape(Graphics2D g, Point startPoint, Point endPoint, BoardAction shape) {
+	private void drawShape(Graphics2D g, Point startPoint, Point endPoint, ActionType shape) {
 		switch (shape) {
 		case LINE:
 			drawLine(g, startPoint, endPoint);
@@ -125,20 +115,46 @@ public class Board extends JPanel {
 		}
 	}
 
-	private void drawShape(Graphics2D g, Point startPoint, Point endPoint) {
-		drawShape(g, startPoint, endPoint, selectedAction);
+	public void clearAndRepaint() {
+		clear(canvasBufferG2d);
+		canvasBufferG2d.drawImage(canvas, 0, 0, null);
+		repaint();
 	}
 
-	public void drawShape(Point startPoint, Point endPoint, BoardAction shape) {
-		drawShape(canvasG2d, startPoint, endPoint, shape);
+	public void drawShape(Point startPoint, Point endPoint, ActionType shape) {
+		this.drawShape(canvasG2d, startPoint, endPoint, shape);
+		this.clearAndRepaint();
+	}
+
+	public void drawShape(Point startPoint, Point endPoint, ActionType shape, boolean ifRepaint) {
+		this.drawShape(canvasG2d, startPoint, endPoint, shape);
+		if (ifRepaint) {
+			this.clearAndRepaint();
+		}
 	}
 
 	public void erase(Point startPoint, Point endPoint) {
 		eraserG2d.drawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+		this.clearAndRepaint();
+	}
+
+	public void erase(Point startPoint, Point endPoint, boolean ifRepaint) {
+		eraserG2d.drawLine(startPoint.x, startPoint.y, endPoint.x, endPoint.y);
+		if (ifRepaint) {
+			this.clearAndRepaint();
+		}
 	}
 
 	public void drawString(Point point, String string) {
 		canvasG2d.drawString(string, point.x, point.y);
+		this.clearAndRepaint();
+	}
+
+	public void drawString(Point point, String string, boolean ifRepaint) {
+		this.drawString(point, string);
+		if (ifRepaint) {
+			this.clearAndRepaint();
+		}
 	}
 
 	class TextPainter extends MouseAdapter {
@@ -146,7 +162,7 @@ public class Board extends JPanel {
 
 		@Override
 		public void mouseClicked(MouseEvent e) {
-			if (selectedAction == BoardAction.TEXT && tf == null) {
+			if (selectedAction == ActionType.TEXT && tf == null) {
 				// Create a textField on the board for the user to enter a string
 				tf = new JTextField();
 				tf.setBounds(e.getX(), e.getY(), 300, 24);
@@ -159,17 +175,17 @@ public class Board extends JPanel {
 			if (tf != null) {
 				// Draw the text onto the shared canvas and remove the textField
 				Point point = new Point(tf.getX(), tf.getY());
-				drawString(point, tf.getText());
+				String text = tf.getText();
+				drawString(point, text);
 				Board.this.remove(tf);
 				tf = null;
 
-				clear(canvasBufferG2d);
-				canvasBufferG2d.drawImage(canvas, 0, 0, null);
-				repaint();
-
 				// Broadcast messages
-				Board.this.broadcastingQueue.add(new JSONObject(String.format(
-						"{type: 'BoardAction', boardAction: 'TEXT', point: {x: %d, y: %d}}", point.x, point.y)));
+				HashMap<String, String> data = new HashMap<>();
+				data.put("actionType", ActionType.TEXT.toString());
+				data.put("text", text);
+				data.put("point", String.format("{'x': %d, 'y': %d}", point.x, point.y));
+				Board.this.boardActionQueue.add(new JSONObject(data));
 			}
 		}
 	}
@@ -195,9 +211,7 @@ public class Board extends JPanel {
 
 			clear(canvasBufferG2d);
 			canvasBufferG2d.drawImage(canvas, 0, 0, null);
-
-			drawShape(canvasBufferG2d, startPoint, endPoint);
-
+			drawShape(canvasBufferG2d, startPoint, endPoint, selectedAction);
 			repaint();
 		}
 
@@ -206,12 +220,22 @@ public class Board extends JPanel {
 			endPoint = e.getPoint();
 
 			// Propagate changes onto the shared canvas
-			drawShape(canvasG2d, startPoint, endPoint);
+			drawShape(startPoint, endPoint, selectedAction);
 
-			clear(canvasBufferG2d);
-			canvasBufferG2d.drawImage(canvas, 0, 0, null);
-
-			repaint();
+			switch (selectedAction) {
+			case LINE:
+			case CIRCLE:
+			case RECT:
+				// Broadcast messages
+				HashMap<String, String> data = new HashMap<>();
+				data.put("actionType", selectedAction.toString());
+				data.put("startPoint", String.format("{'x': %d, 'y': %d}", startPoint.x, startPoint.y));
+				data.put("endPoint", String.format("{'x': %d, 'y': %d}", endPoint.x, endPoint.y));
+				Board.this.boardActionQueue.add(new JSONObject(data));
+				break;
+			default:
+				break;
+			}
 		}
 	}
 
@@ -220,8 +244,15 @@ public class Board extends JPanel {
 		public void mouseDragged(MouseEvent e) {
 			endPoint = e.getPoint();
 
-			if (selectedAction == BoardAction.ERASER) {
+			if (selectedAction == ActionType.ERASER) {
 				erase(startPoint, endPoint);
+
+				// Broadcast messages
+				HashMap<String, String> data = new HashMap<>();
+				data.put("actionType", ActionType.ERASER.toString());
+				data.put("startPoint", String.format("{'x': %d, 'y': %d}", startPoint.x, startPoint.y));
+				data.put("endPoint", String.format("{'x': %d, 'y': %d}", endPoint.x, endPoint.y));
+				Board.this.boardActionQueue.add(new JSONObject(data));
 
 				// Update the start point for free drawing
 				startPoint = endPoint;
@@ -232,9 +263,5 @@ public class Board extends JPanel {
 		public void mouseReleased(MouseEvent e) {
 			// Do nothing
 		}
-	}
-
-	public static enum BoardAction {
-		LINE, CIRCLE, RECT, TEXT, ERASER;
 	}
 }
