@@ -1,24 +1,30 @@
 package remote;
 
+import java.io.IOException;
 import java.rmi.NotBoundException;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
-import java.util.UUID;
 
 public interface ICollaborator extends Remote {
-	public UUID getId() throws RemoteException;
+	public int getId() throws RemoteException;
+	
+	public String getUsername() throws RemoteException;
 
 	// Connect to a mediator
 	public void connect(String serverAddress, int serverPort) throws RemoteException, NotBoundException;
-	
+
+	public void updateBoard() throws IOException, RemoteException;
+
+	public void updateUserList() throws RemoteException;
+
 	// Disconnect from the mediator
 	public void unregister() throws RemoteException;
 
 	// Outgoing messages/data
-	public boolean send(String data, UUID to) throws RemoteException;
+	public void send(String data, int to) throws RemoteException;
 
-	public boolean broadcast(String data) throws RemoteException;
+	public void broadcast(String data) throws RemoteException;
 
 	// Incoming messages/data
-	public boolean notify(String data, UUID from) throws RemoteException;
+	public void notify(String data, int from) throws RemoteException;
 }
