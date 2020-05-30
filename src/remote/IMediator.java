@@ -21,10 +21,8 @@ public interface IMediator extends Remote {
 
 	public void broadcast(String data, int from) throws RemoteException;
 
-	public void broadcastAndAddBoardAction(String data, int from) throws RemoteException;
-
-	public void broadcastAndResetBoardActions(String data, int from) throws RemoteException;
-
+	public void addBoardActions(String data) throws RemoteException;
+	
 	public void resetBoardActions() throws RemoteException;
 
 	public void resetBoardActions(String boardActions) throws RemoteException;

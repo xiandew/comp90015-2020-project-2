@@ -61,7 +61,8 @@ public class Mediator extends UnicastRemoteObject implements IMediator {
 			// Broadcast messages
 			JSONObject data = new JSONObject();
 			data.put("actionType", ActionType.MANAGER_EXIT.toString());
-			this.broadcastAndResetBoardActions(data.toString(), id);
+			this.resetBoardActions();
+			this.broadcast(data.toString(), id);
 		}
 		return true;
 	}
@@ -97,9 +98,8 @@ public class Mediator extends UnicastRemoteObject implements IMediator {
 	}
 
 	@Override
-	public void broadcastAndAddBoardAction(String data, int from) throws RemoteException {
+	public void addBoardActions(String data) throws RemoteException {
 		this.executedBoardActions.add(data);
-		this.broadcast(data, from);
 	}
 
 	@Override
@@ -113,12 +113,6 @@ public class Mediator extends UnicastRemoteObject implements IMediator {
 		for (Object jBoardAction : new JSONArray(boardActions)) {
 			this.executedBoardActions.add(jBoardAction.toString());
 		}
-	}
-
-	@Override
-	public void broadcastAndResetBoardActions(String data, int from) throws RemoteException {
-		this.resetBoardActions();
-		this.broadcast(data, from);
 	}
 
 	public static void main(String[] args) {
