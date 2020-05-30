@@ -159,7 +159,7 @@ public class GUI {
 	}
 
 	public int showConfirmDialog(String msg) {
-		return JOptionPane.showConfirmDialog(frmMain, msg, "Confirm", JOptionPane.OK_CANCEL_OPTION);
+		return JOptionPane.showConfirmDialog(frmMain, msg, "Confirm", JOptionPane.YES_NO_CANCEL_OPTION);
 	}
 
 	/**
