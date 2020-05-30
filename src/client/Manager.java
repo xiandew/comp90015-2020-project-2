@@ -48,10 +48,10 @@ public class Manager extends User {
 	public void unregister() throws RemoteException {
 		try {
 			this.mediator.removeManager();
+			this.mediator.resetBoardActions();
 			// Broadcast messages
 			JSONObject data = new JSONObject();
 			data.put("actionType", ActionType.MANAGER_EXIT.toString());
-			this.mediator.resetBoardActions();
 			this.broadcast(data.toString());
 		} catch (Exception e) {
 			// Do nothing

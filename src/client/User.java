@@ -192,12 +192,6 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 			this.broadcastUserListUpdate();
 			this.launchGUI();
 			break;
-		case JOIN_REQUEST_DECLINED:
-			this.gui.showMessageDialog("The manager declined your join request");
-			new Thread(() -> {
-				System.exit(0);
-			}).start();
-			break;
 		case TEXT:
 		case LINE:
 		case CIRCLE:
@@ -225,20 +219,37 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 		case USER_LIST_UPDATE:
 			this.updateUserList();
 			break;
-		case KICKED_OUT:
-			this.gui.showMessageDialog("You are kicked out by the manager");
-			System.exit(0);
-			break;
-		case MANAGER_EXIT:
-			this.gui.showMessageDialog("The manager closed the board");
-			System.exit(0);
-			break;
 		case FILE_NEW:
 			this.refreshBoard();
 			break;
 		case FILE_OPEN:
 			this.refreshBoard(new JSONArray(jData.get("boardActions").toString()));
 			break;
+		case JOIN_REQUEST_DECLINED:
+		case KICKED_OUT:
+		case MANAGER_EXIT:
+		case SERVER_SHUTDOWN:
+			switch (actionType) {
+			case JOIN_REQUEST_DECLINED:
+				this.gui.showMessageDialog("The manager declined your join request");
+				break;
+			case KICKED_OUT:
+				this.gui.showMessageDialog("You are kicked out by the manager");
+				break;
+			case MANAGER_EXIT:
+				this.gui.showMessageDialog("The manager closed the board");
+				break;
+			case SERVER_SHUTDOWN:
+				this.gui.showMessageDialog("The server has been shutdown");
+				break;
+			default:
+				break;
+			}
+			// Exit the program in another thread as it may cause connection reset exception
+			// if not
+			new Thread(() -> {
+				System.exit(0);
+			}).start();
 		default:
 			break;
 		}
