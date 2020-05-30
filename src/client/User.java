@@ -38,12 +38,6 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 			System.exit(0);
 		}
 
-		this.updateBoard();
-		this.updateUserList();
-		this.broadcastsUserListUpdate();
-
-		this.launchGUI();
-
 		// Listen for board actions and broadcast if any
 		new Thread(() -> {
 			while (true) {
@@ -62,7 +56,7 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			try {
 				this.unregister();
-				this.broadcastsUserListUpdate();
+				this.broadcastUserListUpdate();
 			} catch (RemoteException e) {
 				// Do nothing
 			}
@@ -92,6 +86,8 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 			System.out.println("No white board created yet. Please create one instead");
 			System.exit(0);
 		}
+
+		System.out.println("Connected. Please wait the manager to approve your request...");
 		this.id = id;
 	}
 
@@ -164,7 +160,7 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 		this.mediator.broadcast(data, this.id);
 	}
 
-	public void broadcastsUserListUpdate() throws RemoteException {
+	public void broadcastUserListUpdate() throws RemoteException {
 		// Broadcast messages
 		JSONObject data = new JSONObject();
 		data.put("actionType", ActionType.USER_LIST_UPDATE.toString());
@@ -180,6 +176,12 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 		JSONObject jData = new JSONObject(data);
 		ActionType actionType = ActionType.valueOf((String) jData.get("actionType"));
 		switch (actionType) {
+		case JOIN_REQUEST_APPROVED:
+			this.updateBoard();
+			this.updateUserList();
+			this.broadcastUserListUpdate();
+			this.launchGUI();
+			break;
 		case TEXT:
 		case LINE:
 		case CIRCLE:
