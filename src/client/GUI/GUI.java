@@ -53,9 +53,14 @@ public class GUI {
 	public JMenuItem mntmSaveAs = new JMenuItem("Save As");
 	public JFileChooser fileChooser = new JFileChooser();
 	public JFrame frmMain;
+	public DefaultTableModel modelUsers;
 	public JTable tableUsers;
+	public DefaultTableModel modelNotifications;
+	public JTable tableNotifications;
+
 	private JPanel panelUsers;
 	private JScrollPane scrollPaneUsers;
+	private JScrollPane scrollPaneNotifications;
 
 	public GUI() {
 		initialize();
@@ -63,11 +68,6 @@ public class GUI {
 
 	public void launch() {
 		this.frmMain.setVisible(true);
-	}
-
-	public void launchAsManager() {
-		this.addManagerControls();
-		this.launch();
 	}
 
 	public void addManagerControls() {
@@ -100,75 +100,58 @@ public class GUI {
 		lblNotifications.setBounds(14, 13, 104, 18);
 		panelNotifications.add(lblNotifications);
 
-		JScrollPane scrollPaneNotifications = new JScrollPane();
+		scrollPaneNotifications = new JScrollPane();
 		scrollPaneNotifications.setBounds(14, 35, 282, 268);
 		panelNotifications.add(scrollPaneNotifications);
+
+		DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
+		centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+
+		modelUsers = new DefaultTableModel(null, new String[] { "ID", "Username", "Action" });
+		tableUsers = new JTable(modelUsers);
+		tableUsers.addMouseListener(new CursorDefaultListener(scrollPaneUsers));
+		tableUsers.addMouseMotionListener(new CursorPointerListener(tableUsers, scrollPaneUsers, "Kick Out"));
+		tableUsers.getColumn("ID").setCellRenderer(centerRenderer);
+		tableUsers.getColumn("Username").setCellRenderer(new MultilineTableCell());
+		tableUsers.getColumn("Action").setCellRenderer(centerRenderer);
+		tableUsers.setEnabled(false);
+		scrollPaneUsers.setViewportView(tableUsers);
+
+		modelNotifications = new DefaultTableModel(null, new String[] { "UserID", "Message", "Action" });
+		tableNotifications = new JTable(modelNotifications);
+		tableNotifications.addMouseListener(new CursorDefaultListener(scrollPaneNotifications));
+		tableNotifications.addMouseMotionListener(
+				new CursorPointerListener(tableNotifications, scrollPaneNotifications, "Approve"));
+		tableNotifications.getColumn("UserID").setCellRenderer(centerRenderer);
+		tableNotifications.getColumn("Message").setCellRenderer(new MultilineTableCell());
+		tableNotifications.getColumn("Action").setCellRenderer(centerRenderer);
+		tableNotifications.setEnabled(false);
+		scrollPaneNotifications.setViewportView(tableNotifications);
 
 		// Resize user list panels
 		panelUsers.setBounds(647, 315, 310, 302);
 		scrollPaneUsers.setBounds(14, 23, 282, 266);
 	}
-	
-	public void updateNotificationLisst(LinkedList<JSONObject> notifications) {
-		
-	}
 
 	public void updateUserList(LinkedList<JSONObject> users, boolean isManager) {
-		String[] columnNames = null;
-		Object[][] data = new Object[users.size()][];
-
+		modelUsers.setRowCount(0);
 		if (isManager) {
-			columnNames = new String[] { "ID", "Username", "Action" };
 			for (int i = 0; i < users.size(); i++) {
 				JSONObject user = users.get(i);
+				int id = Integer.parseInt((String) user.get("id"));
 				if (Boolean.parseBoolean((String) user.get("isManager"))) {
-					data[i] = new Object[] { Integer.parseInt((String) user.get("id")), user.get("displayName"),
-							"N/A" };
+					modelUsers.addRow(new Object[] { id, user.get("displayName"), "N/A" });
 				} else {
-					data[i] = new Object[] { Integer.parseInt((String) user.get("id")), user.get("displayName"),
-							"Kick Out" };
+					modelUsers.addRow(new Object[] { id, user.get("displayName"), "Kick Out" });
 				}
 			}
 		} else {
-			columnNames = new String[] { "ID", "Username" };
 			for (int i = 0; i < users.size(); i++) {
 				JSONObject user = users.get(i);
-				data[i] = new Object[] { Integer.parseInt((String) user.get("id")), user.get("displayName") };
+				int id = Integer.parseInt((String) user.get("id"));
+				modelUsers.addRow(new Object[] { id, user.get("displayName") });
 			}
 		}
-
-		tableUsers = new JTable(new DefaultTableModel(data, columnNames));
-		tableUsers.getColumn("Username").setCellRenderer(new MultilineTableCell());
-
-		if (isManager) {
-			DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-			centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
-			tableUsers.getColumn("Action").setCellRenderer(centerRenderer);
-
-			tableUsers.addMouseListener(new MouseAdapter() {
-				@Override
-				public void mouseExited(MouseEvent e) {
-					scrollPaneUsers.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
-				}
-			});
-
-			tableUsers.addMouseMotionListener(new MouseMotionAdapter() {
-				@Override
-				public void mouseMoved(MouseEvent e) {
-					int row = tableUsers.rowAtPoint(e.getPoint());
-					int col = tableUsers.columnAtPoint(e.getPoint());
-					if (row >= 0 && col == tableUsers.getColumn("Action").getModelIndex()
-							&& tableUsers.getValueAt(row, col) == "Kick Out") {
-						scrollPaneUsers.setCursor(new Cursor(Cursor.HAND_CURSOR));
-					} else {
-						scrollPaneUsers.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
-					}
-				}
-			});
-		}
-
-		tableUsers.setEnabled(false);
-		scrollPaneUsers.setViewportView(tableUsers);
 	}
 
 	public void showMessageDialog(String msg) {
@@ -210,6 +193,12 @@ public class GUI {
 		scrollPaneUsers.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 		scrollPaneUsers.setBounds(14, 23, 282, 568);
 		panelUsers.add(scrollPaneUsers);
+
+		modelUsers = new DefaultTableModel(new Object[][] {}, new String[] { "ID", "Username" });
+		tableUsers = new JTable(modelUsers);
+		tableUsers.getColumn("Username").setCellRenderer(new MultilineTableCell());
+		tableUsers.setEnabled(false);
+		scrollPaneUsers.setViewportView(tableUsers);
 
 		ButtonGroup buttonGroupBoardActions = new ButtonGroup();
 
@@ -318,6 +307,45 @@ public class GUI {
 				int row, int column) {
 			CellArea area = new CellArea(value.toString(), table, row, column, isSelected);
 			return area;
+		}
+	}
+
+	class CursorPointerListener extends MouseMotionAdapter {
+		private JTable table;
+		private JScrollPane pane;
+		private String targetAction;
+
+		CursorPointerListener(JTable table, JScrollPane pane, String targetAction) {
+			super();
+			this.table = table;
+			this.pane = pane;
+			this.targetAction = targetAction;
+		}
+
+		@Override
+		public void mouseMoved(MouseEvent e) {
+			int row = table.rowAtPoint(e.getPoint());
+			int col = table.columnAtPoint(e.getPoint());
+			if (row >= 0 && col == table.getColumn("Action").getModelIndex()
+					&& table.getValueAt(row, col) == this.targetAction) {
+				pane.setCursor(new Cursor(Cursor.HAND_CURSOR));
+			} else {
+				pane.setCursor(new Cursor(Cursor.DEFAULT_CURSOR));
+			}
+		}
+	}
+
+	class CursorDefaultListener extends MouseAdapter {
+		private JScrollPane pane;
+
+		public CursorDefaultListener(JScrollPane pane) {
+			super();
+			this.pane = pane;
+		}
+
+		@Override
+		public void mouseExited(MouseEvent e) {
+			pane.setCursor(Cursor.getPredefinedCursor(Cursor.DEFAULT_CURSOR));
 		}
 	}
 }
