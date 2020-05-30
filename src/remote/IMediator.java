@@ -3,6 +3,7 @@ package remote;
 import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.util.LinkedList;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 public interface IMediator extends Remote {
 	public static final String REMOTE_OBJECT_NAME = "SharedWhiteBord";
@@ -11,7 +12,7 @@ public interface IMediator extends Remote {
 
 	public int registerAsManager(ICollaborator m) throws RemoteException;
 
-	public LinkedList<String> getExecutedBoardActions() throws RemoteException;
+	public ConcurrentLinkedQueue<String> getExecutedBoardActions() throws RemoteException;
 
 	public void removeUser(int id) throws RemoteException;
 	

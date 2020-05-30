@@ -8,18 +8,21 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.util.HashMap;
 import java.util.LinkedList;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import org.json.JSONArray;
 import org.json.JSONObject;
 
 import remote.ICollaborator;
 import remote.IMediator;
+import utils.ActionType;
 
 public class Mediator extends UnicastRemoteObject implements IMediator {
 	private static final long serialVersionUID = 1L;
 
-	private LinkedList<String> executedBoardActions = new LinkedList<>();
-	private HashMap<Integer, ICollaborator> users = new HashMap<>();
+	private ConcurrentLinkedQueue<String> executedBoardActions = new ConcurrentLinkedQueue<>();
+	private ConcurrentHashMap<Integer, ICollaborator> users = new ConcurrentHashMap<>();
 	private ICollaborator manager;
 	private int nUsers = 0;
 
@@ -28,7 +31,7 @@ public class Mediator extends UnicastRemoteObject implements IMediator {
 	}
 
 	@Override
-	public synchronized int register(ICollaborator c) throws RemoteException {
+	public int register(ICollaborator c) throws RemoteException {
 		int id = nUsers++;
 		this.users.put(id, c);
 		return id;
@@ -44,17 +47,17 @@ public class Mediator extends UnicastRemoteObject implements IMediator {
 	}
 
 	@Override
-	public LinkedList<String> getExecutedBoardActions() throws RemoteException {
+	public ConcurrentLinkedQueue<String> getExecutedBoardActions() throws RemoteException {
 		return this.executedBoardActions;
 	}
 
 	@Override
-	public synchronized void removeUser(int id) throws RemoteException {
+	public void removeUser(int id) throws RemoteException {
 		this.users.remove(id);
 	}
 
 	@Override
-	public synchronized void removeManager() throws RemoteException {
+	public void removeManager() throws RemoteException {
 		this.users.remove(manager.getId());
 		manager = null;
 	}
@@ -83,7 +86,7 @@ public class Mediator extends UnicastRemoteObject implements IMediator {
 	}
 
 	@Override
-	public synchronized void broadcast(String data, int from) throws RemoteException {
+	public void broadcast(String data, int from) throws RemoteException {
 		for (int id : this.users.keySet()) {
 			try {
 				this.users.get(id).notify(data, from);
@@ -95,17 +98,17 @@ public class Mediator extends UnicastRemoteObject implements IMediator {
 	}
 
 	@Override
-	public synchronized void addBoardActions(String data) throws RemoteException {
+	public void addBoardActions(String data) throws RemoteException {
 		this.executedBoardActions.add(data);
 	}
 
 	@Override
-	public synchronized void resetBoardActions() throws RemoteException {
+	public void resetBoardActions() throws RemoteException {
 		this.executedBoardActions.clear();
 	}
 
 	@Override
-	public synchronized void resetBoardActions(String boardActions) throws RemoteException {
+	public void resetBoardActions(String boardActions) throws RemoteException {
 		this.resetBoardActions();
 		for (Object jBoardAction : new JSONArray(boardActions)) {
 			this.executedBoardActions.add(jBoardAction.toString());
@@ -123,6 +126,9 @@ public class Mediator extends UnicastRemoteObject implements IMediator {
 			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 				try {
 					registry.unbind(IMediator.REMOTE_OBJECT_NAME);
+					JSONObject data = new JSONObject();
+					data.put("actionType", ActionType.SERVER_SHUTDOWN.toString());
+					mediator.broadcast(data.toString(), -1);
 				} catch (RemoteException | NotBoundException e) {
 					// Do nothing
 				}
