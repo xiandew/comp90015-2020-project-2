@@ -1,5 +1,10 @@
 package utils;
 
 public enum ActionType {
-	LINE, CIRCLE, RECT, TEXT, ERASER, USER_LIST_UPDATE, KICKED_OUT, MANAGER_EXIT, FILE_NEW, FILE_OPEN;
+	// Board actions
+	LINE, CIRCLE, RECT, TEXT, ERASER,
+	// User-listening actions
+	USER_LIST_UPDATE, JOIN_REQUEST_APPROVED, KICKED_OUT, MANAGER_EXIT, FILE_NEW, FILE_OPEN,
+	// Manager-listening actions
+	JOIN_REQUEST;
 }
