@@ -34,6 +34,16 @@ public class Mediator extends UnicastRemoteObject implements IMediator {
 		}
 		int id = nUsers++;
 		this.users.put(id, c);
+
+		if (this.manager != c) {
+			// Notify manager of the join request
+			JSONObject data = new JSONObject();
+			data.put("actionType", ActionType.JOIN_REQUEST);
+			data.put("id", id);
+			data.put("username", c.getUsername());
+			this.send(data.toString(), manager.getId(), id);
+		}
+
 		return id;
 	}
 
