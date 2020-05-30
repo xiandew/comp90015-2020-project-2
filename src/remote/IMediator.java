@@ -13,7 +13,11 @@ public interface IMediator extends Remote {
 
 	public LinkedList<String> getExecutedBoardActions() throws RemoteException;
 
-	public boolean removeUser(int id) throws RemoteException;
+	public void removeUser(int id) throws RemoteException;
+	
+	public void removeManager() throws RemoteException;
+	
+	public int getManagerId() throws RemoteException;
 
 	public LinkedList<String> getUsers() throws RemoteException;
 

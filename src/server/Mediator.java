@@ -14,36 +14,23 @@ import org.json.JSONObject;
 
 import remote.ICollaborator;
 import remote.IMediator;
-import utils.ActionType;
 
 public class Mediator extends UnicastRemoteObject implements IMediator {
 	private static final long serialVersionUID = 1L;
-	private ICollaborator manager;
-	private HashMap<Integer, ICollaborator> users = new HashMap<>();
-	private int nUsers = 0;
+
 	private LinkedList<String> executedBoardActions = new LinkedList<>();
+	private HashMap<Integer, ICollaborator> users = new HashMap<>();
+	private ICollaborator manager;
+	private int nUsers = 0;
 
 	protected Mediator() throws RemoteException {
 		super();
 	}
 
 	@Override
-	public int register(ICollaborator c) throws RemoteException {
-		if (this.manager == null) {
-			return -1;
-		}
+	public synchronized int register(ICollaborator c) throws RemoteException {
 		int id = nUsers++;
 		this.users.put(id, c);
-
-		if (this.manager != c) {
-			// Notify manager of the join request
-			JSONObject data = new JSONObject();
-			data.put("actionType", ActionType.JOIN_REQUEST);
-			data.put("id", id);
-			data.put("username", c.getUsername());
-			this.send(data.toString(), manager.getId(), id);
-		}
-
 		return id;
 	}
 
@@ -62,19 +49,19 @@ public class Mediator extends UnicastRemoteObject implements IMediator {
 	}
 
 	@Override
-	public boolean removeUser(int id) throws RemoteException {
-		if (this.users.remove(id) == null) {
-			return false;
-		}
-		if (manager != null && id == manager.getId()) {
-			manager = null;
-			// Broadcast messages
-			JSONObject data = new JSONObject();
-			data.put("actionType", ActionType.MANAGER_EXIT.toString());
-			this.resetBoardActions();
-			this.broadcast(data.toString(), id);
-		}
-		return true;
+	public synchronized void removeUser(int id) throws RemoteException {
+		this.users.remove(id);
+	}
+
+	@Override
+	public synchronized void removeManager() throws RemoteException {
+		this.users.remove(manager.getId());
+		manager = null;
+	}
+
+	@Override
+	public int getManagerId() throws RemoteException {
+		return manager == null ? -1 : manager.getId();
 	}
 
 	@Override
@@ -96,29 +83,29 @@ public class Mediator extends UnicastRemoteObject implements IMediator {
 	}
 
 	@Override
-	public void broadcast(String data, int from) throws RemoteException {
-		for (ICollaborator user : this.users.values()) {
+	public synchronized void broadcast(String data, int from) throws RemoteException {
+		for (int id : this.users.keySet()) {
 			try {
-				user.notify(data, from);
+				this.users.get(id).notify(data, from);
 			} catch (RemoteException e) {
 				// The user might be disconnected
-				this.removeUser(user.getId());
+				this.removeUser(id);
 			}
 		}
 	}
 
 	@Override
-	public void addBoardActions(String data) throws RemoteException {
+	public synchronized void addBoardActions(String data) throws RemoteException {
 		this.executedBoardActions.add(data);
 	}
 
 	@Override
-	public void resetBoardActions() throws RemoteException {
+	public synchronized void resetBoardActions() throws RemoteException {
 		this.executedBoardActions.clear();
 	}
 
 	@Override
-	public void resetBoardActions(String boardActions) throws RemoteException {
+	public synchronized void resetBoardActions(String boardActions) throws RemoteException {
 		this.resetBoardActions();
 		for (Object jBoardAction : new JSONArray(boardActions)) {
 			this.executedBoardActions.add(jBoardAction.toString());

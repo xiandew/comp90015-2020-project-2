@@ -15,8 +15,6 @@ public interface ICollaborator extends Remote {
 
 	public void updateBoard() throws IOException, RemoteException;
 
-	public void updateUserList() throws RemoteException;
-
 	// Disconnect from the mediator
 	public void unregister() throws RemoteException;
 

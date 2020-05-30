@@ -56,7 +56,6 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 		Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 			try {
 				this.unregister();
-				this.broadcastUserListUpdate();
 			} catch (RemoteException e) {
 				// Do nothing
 			}
@@ -79,16 +78,32 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 
 	@Override
 	public void connect(String serverAddress, int serverPort) throws RemoteException, NotBoundException {
+		System.out.println("Connecting...");
+
 		Registry registry = LocateRegistry.getRegistry(serverAddress, serverPort);
 		this.mediator = (IMediator) registry.lookup(IMediator.REMOTE_OBJECT_NAME);
-		int id = this.mediator.register(this);
-		if (id < 0) {
+		int managerId = this.mediator.getManagerId();
+		if (managerId < 0) {
 			System.out.println("No white board created yet. Please create one instead");
 			System.exit(0);
 		}
 
+		this.id = this.mediator.register(this);
 		System.out.println("Connected. Please wait the manager to approve your request...");
-		this.id = id;
+
+		new Thread(() -> {
+			// Notify manager of the join request
+			JSONObject data = new JSONObject();
+			data.put("actionType", ActionType.JOIN_REQUEST);
+			data.put("id", this.id);
+			data.put("username", this.username);
+			try {
+				this.send(data.toString(), managerId);
+			} catch (RemoteException e) {
+				System.out.println("Unable to send the join request");
+				System.exit(0);
+			}
+		}).start();
 	}
 
 	@Override
@@ -131,14 +146,10 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 	}
 
 	@Override
-	public void updateUserList() throws RemoteException {
-		this.gui.updateUserList(this.getUserList(), false);
-	}
-
-	@Override
 	public void unregister() throws RemoteException {
 		try {
 			this.mediator.removeUser(this.id);
+			this.broadcastUserListUpdate();
 		} catch (Exception e) {
 			// Do nothing
 		}
@@ -146,8 +157,7 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 
 	@Override
 	public void send(String data, int to) throws RemoteException {
-		// TODO Auto-generated method stub
-		return;
+		this.mediator.send(data, to, this.id);
 	}
 
 	@Override
@@ -157,7 +167,7 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 
 	public void broadcastBoardActions(String data) throws RemoteException {
 		this.mediator.addBoardActions(data);
-		this.mediator.broadcast(data, this.id);
+		this.broadcast(data);
 	}
 
 	public void broadcastUserListUpdate() throws RemoteException {
@@ -181,6 +191,12 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 			this.updateUserList();
 			this.broadcastUserListUpdate();
 			this.launchGUI();
+			break;
+		case JOIN_REQUEST_DECLINED:
+			this.gui.showMessageDialog("The manager declined your join request");
+			new Thread(() -> {
+				System.exit(0);
+			}).start();
 			break;
 		case TEXT:
 		case LINE:
@@ -241,6 +257,10 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 			this.notify(jBoardAction.toString(), -1);
 		}
 		this.gui.board.clearAndRepaint();
+	}
+
+	public void updateUserList() throws RemoteException {
+		this.gui.updateUserList(this.getUserList(), false);
 	}
 
 	public static void main(String[] args) {

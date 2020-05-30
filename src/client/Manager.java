@@ -34,6 +34,36 @@ public class Manager extends User {
 	}
 
 	@Override
+	public void connect(String serverAddress, int serverPort) throws RemoteException, NotBoundException {
+		Registry registry = LocateRegistry.getRegistry(serverAddress, serverPort);
+		this.mediator = (IMediator) registry.lookup(IMediator.REMOTE_OBJECT_NAME);
+		this.id = this.mediator.registerAsManager(this);
+		if (this.id < 0) {
+			System.out.println("The board has been created. Please join instead");
+			System.exit(0);
+		}
+	}
+
+	@Override
+	public void unregister() throws RemoteException {
+		try {
+			this.mediator.removeManager();
+			// Broadcast messages
+			JSONObject data = new JSONObject();
+			data.put("actionType", ActionType.MANAGER_EXIT.toString());
+			this.mediator.resetBoardActions();
+			this.broadcast(data.toString());
+		} catch (Exception e) {
+			// Do nothing
+		}
+	}
+
+	@Override
+	public void updateUserList() throws RemoteException {
+		this.gui.updateUserList(this.getUserList(), true);
+	}
+
+	@Override
 	public void launchGUI() {
 		this.gui.mntmNew.addActionListener((ActionEvent ev) -> {
 			this.refreshBoard();
@@ -43,7 +73,7 @@ public class Manager extends User {
 			data.put("actionType", ActionType.FILE_NEW.toString());
 			try {
 				this.mediator.resetBoardActions();
-				this.mediator.broadcast(data.toString(), this.id);
+				this.broadcast(data.toString());
 			} catch (RemoteException e) {
 				// Do nothing
 			}
@@ -68,7 +98,7 @@ public class Manager extends User {
 					JSONObject data = new JSONObject();
 					data.put("actionType", ActionType.FILE_OPEN);
 					data.put("boardActions", boardActions.toString());
-					this.mediator.broadcast(data.toString(), this.id);
+					this.broadcast(data.toString());
 
 				} catch (NullPointerException e) {
 					this.gui.showMessageDialog("Please select a file to open");
@@ -98,7 +128,7 @@ public class Manager extends User {
 				if (row >= 0 && col == actionCol && gui.tableUsers.getValueAt(row, col) == "Kick Out") {
 					int id = (int) gui.tableUsers.getValueAt(row, idCol);
 					String msg = String.format("You are going to kick out user %s", id);
-					if (JOptionPane.OK_OPTION == gui.showConfirmDialog(msg)) {
+					if (JOptionPane.YES_OPTION == gui.showConfirmDialog(msg)) {
 						gui.modelUsers.removeRow(gui.tableUsers.convertRowIndexToModel(row));
 
 						// Use thread to prevent the blocking when sending messages
@@ -110,7 +140,7 @@ public class Manager extends User {
 								mediator.send(data.toString(), id, Manager.this.id);
 								mediator.removeUser(id);
 								data.put("actionType", ActionType.USER_LIST_UPDATE);
-								mediator.broadcast(data.toString(), Manager.this.id);
+								broadcast(data.toString());
 							} catch (Exception e) {
 								// System.out.println("Unable to send messages");
 							}
@@ -129,19 +159,33 @@ public class Manager extends User {
 				int actionCol = gui.tableNotifications.getColumn("Action").getModelIndex();
 				if (row >= 0 && col == actionCol && gui.tableNotifications.getValueAt(row, col) == "Approve") {
 					int id = (int) gui.tableNotifications.getValueAt(row, idCol);
-					gui.modelNotifications.setValueAt("Approved", row, col);
+
+					String msg = String.format("Approve user %s to join?", id);
+					int option = gui.showConfirmDialog(msg);
+
+					if (option == JOptionPane.YES_OPTION) {
+						gui.modelNotifications.setValueAt("Approved", row, col);
+					}
+					if (option == JOptionPane.NO_OPTION) {
+						gui.modelNotifications.setValueAt("Declined", row, col);
+					}
 
 					new Thread(() -> {
-						// Broadcast messages
 						JSONObject data = new JSONObject();
 						try {
-							data.put("actionType", ActionType.JOIN_REQUEST_APPROVED);
-							mediator.send(data.toString(), id, Manager.this.id);
-							data.put("actionType", ActionType.USER_LIST_UPDATE);
-							mediator.broadcast(data.toString(), -1);
+							if (option == JOptionPane.YES_OPTION) {
+								data.put("actionType", ActionType.JOIN_REQUEST_APPROVED);
+								send(data.toString(), id);
+								data.put("actionType", ActionType.USER_LIST_UPDATE);
+								mediator.broadcast(data.toString(), -1);
+							}
+							if (option == JOptionPane.NO_OPTION) {
+								data.put("actionType", ActionType.JOIN_REQUEST_DECLINED);
+								send(data.toString(), id);
+							}
 						} catch (Exception e) {
 							gui.modelNotifications.setValueAt("N/A", row, col);
-							gui.showMessageDialog("Unable to approve the request. The user might have exited");
+							gui.showMessageDialog("Unable to response the request. The user might have exited");
 						}
 					}).start();
 				}
@@ -149,6 +193,26 @@ public class Manager extends User {
 		});
 
 		this.gui.launch();
+	}
+
+	@Override
+	public void notify(String data, int from) throws RemoteException {
+		super.notify(data, from);
+		if (from == this.id) {
+			return;
+		}
+
+		JSONObject jData = new JSONObject(data);
+		ActionType actionType = ActionType.valueOf((String) jData.get("actionType"));
+		switch (actionType) {
+		case JOIN_REQUEST:
+			String msgFmt = "User <%s> request to join the board";
+			String msg = String.format(msgFmt, jData.get("username"));
+			this.gui.modelNotifications.addRow(new Object[] { jData.get("id"), msg, "Approve" });
+			break;
+		default:
+			break;
+		}
 	}
 
 	private void save() {
@@ -172,42 +236,6 @@ public class Manager extends User {
 			File savedBoardFile = this.gui.fileChooser.getSelectedFile();
 			savedBoardFilePath = savedBoardFile.getAbsolutePath();
 			this.save();
-		}
-	}
-
-	@Override
-	public void connect(String serverAddress, int serverPort) throws RemoteException, NotBoundException {
-		Registry registry = LocateRegistry.getRegistry(serverAddress, serverPort);
-		this.mediator = (IMediator) registry.lookup(IMediator.REMOTE_OBJECT_NAME);
-		this.id = this.mediator.registerAsManager(this);
-		if (this.id < 0) {
-			System.out.println("The board has been created. Please join instead");
-			System.exit(0);
-		}
-	}
-
-	@Override
-	public void updateUserList() throws RemoteException {
-		this.gui.updateUserList(this.getUserList(), true);
-	}
-
-	@Override
-	public void notify(String data, int from) throws RemoteException {
-		super.notify(data, from);
-		if (from == this.id) {
-			return;
-		}
-
-		JSONObject jData = new JSONObject(data);
-		ActionType actionType = ActionType.valueOf((String) jData.get("actionType"));
-		switch (actionType) {
-		case JOIN_REQUEST:
-			String msgFmt = "User <[%s] %s> request to join the board";
-			String msg = String.format(msgFmt, jData.get("id"), jData.get("username"));
-			this.gui.modelNotifications.addRow(new Object[] { jData.get("id"), msg, "Approve" });
-			break;
-		default:
-			break;
 		}
 	}
 
