@@ -42,7 +42,6 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 		this.updateUserList();
 		this.broadcastsUserListUpdate();
 
-		System.out.println("Successfully joined the white board");
 		this.launchGUI();
 
 		// Listen for board actions and broadcast if any
@@ -54,7 +53,7 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 				} catch (NoSuchElementException e) {
 					// Queue is empty, do nothing
 				} catch (RemoteException e) {
-					GUI.showMessageDialog("Unable to broadcast messages");
+					this.gui.showMessageDialog("Unable to broadcast messages");
 					break;
 				}
 			}
@@ -105,8 +104,7 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 		this.refreshBoard(jBoardActions);
 	}
 
-	@Override
-	public void updateUserList() throws RemoteException {
+	public LinkedList<JSONObject> getUserList() throws RemoteException {
 		LinkedList<String> users = this.mediator.getUsers();
 		LinkedList<JSONObject> jUsers = new LinkedList<>();
 		for (String user : users) {
@@ -114,17 +112,17 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 			boolean isManager = Boolean.parseBoolean((String) jUser.get("isManager"));
 			int id = Integer.parseInt((String) jUser.get("id"));
 			int sortCriteria = id;
-			String displayNameFmt = "[%d] %s";
+			String displayNameFmt = "%s";
 			if (isManager) {
 				sortCriteria = -2;
-				displayNameFmt = "[%d] %s (Manager)";
+				displayNameFmt = "%s (Manager)";
 			}
 			if (id == this.id) {
 				sortCriteria = -1;
-				displayNameFmt = "[%d] %s (You)";
+				displayNameFmt = "%s (You)";
 			}
 			jUser.put("sortCriteria", sortCriteria);
-			jUser.put("displayName", String.format(displayNameFmt, id, jUser.get("username")));
+			jUser.put("displayName", String.format(displayNameFmt, jUser.get("username")));
 			jUsers.add(jUser);
 		}
 		Collections.sort(jUsers, new Comparator<JSONObject>() {
@@ -133,7 +131,12 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 				return ((int) a.get("sortCriteria")) - ((int) b.get("sortCriteria"));
 			}
 		});
-		this.gui.updateUserList(jUsers);
+		return jUsers;
+	}
+
+	@Override
+	public void updateUserList() throws RemoteException {
+		this.gui.updateUserList(this.getUserList(), false);
 	}
 
 	@Override
@@ -157,7 +160,8 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 	}
 
 	public void broadcastBoardActions(String data) throws RemoteException {
-		this.mediator.broadcastAndAddBoardAction(data, this.id);
+		this.mediator.addBoardActions(data);
+		this.mediator.broadcast(data, this.id);
 	}
 
 	public void broadcastsUserListUpdate() throws RemoteException {
@@ -203,8 +207,12 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 		case USER_LIST_UPDATE:
 			this.updateUserList();
 			break;
+		case KICKED_OUT:
+			this.gui.showMessageDialog("You are kicked out by the manager");
+			System.exit(0);
+			break;
 		case MANAGER_EXIT:
-			GUI.showMessageDialog("The manager closed the board");
+			this.gui.showMessageDialog("The manager closed the board");
 			System.exit(0);
 			break;
 		case FILE_NEW:

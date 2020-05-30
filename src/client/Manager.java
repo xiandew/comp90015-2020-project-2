@@ -7,17 +7,18 @@ import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
-
 import java.awt.event.ActionEvent;
-
+import java.awt.event.MouseAdapter;
+import java.awt.event.MouseEvent;
 import javax.swing.JFileChooser;
+import javax.swing.JOptionPane;
+import javax.swing.table.DefaultTableModel;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.json.JSONTokener;
 
-import client.GUI.GUI;
 import remote.IMediator;
 import utils.ActionType;
 
@@ -37,7 +38,8 @@ public class Manager extends User {
 			JSONObject data = new JSONObject();
 			data.put("actionType", ActionType.FILE_NEW.toString());
 			try {
-				this.mediator.broadcastAndResetBoardActions(data.toString(), this.id);
+				this.mediator.resetBoardActions();
+				this.mediator.broadcast(data.toString(), this.id);
 			} catch (RemoteException e) {
 				// Do nothing
 			}
@@ -65,10 +67,9 @@ public class Manager extends User {
 					this.mediator.broadcast(data.toString(), this.id);
 
 				} catch (NullPointerException e) {
-					GUI.showMessageDialog("Please select a file to open");
+					this.gui.showMessageDialog("Please select a file to open");
 				} catch (JSONException e) {
-//					GUI.showMessageDialog("Unable to parse the selected file");
-					e.printStackTrace();
+					this.gui.showMessageDialog("Unable to parse the selected file");
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -119,6 +120,43 @@ public class Manager extends User {
 			System.out.println("The board has been created. Please join instead");
 			System.exit(0);
 		}
+	}
+
+	@Override
+	public void updateUserList() throws RemoteException {
+		this.gui.updateUserList(this.getUserList(), true);
+		this.gui.tableUsers.addMouseListener(new MouseAdapter() {
+			@Override
+			public void mouseClicked(MouseEvent ev) {
+				int row = gui.tableUsers.rowAtPoint(ev.getPoint());
+				int col = gui.tableUsers.columnAtPoint(ev.getPoint());
+				int idCol = gui.tableUsers.getColumn("ID").getModelIndex();
+				int actionCol = gui.tableUsers.getColumn("Action").getModelIndex();
+				if (row >= 0 && col == actionCol && gui.tableUsers.getValueAt(row, col) == "Kick Out") {
+					int id = (int) gui.tableUsers.getValueAt(row, idCol);
+					String msg = String.format("You are going to kick out user %s", id);
+					if (JOptionPane.OK_OPTION == gui.showConfirmDialog(msg)) {
+						DefaultTableModel model = (DefaultTableModel) gui.tableUsers.getModel();
+						model.removeRow(gui.tableUsers.convertRowIndexToModel(row));
+
+						// Use thread to prevent the blocking when sending messages
+						new Thread(() -> {
+							// Broadcast messages
+							JSONObject data = new JSONObject();
+							try {
+								data.put("actionType", ActionType.KICKED_OUT);
+								mediator.send(data.toString(), id, Manager.this.id);
+								mediator.removeUser(id);
+								data.put("actionType", ActionType.USER_LIST_UPDATE);
+								mediator.broadcast(data.toString(), Manager.this.id);
+							} catch (Exception e) {
+								// System.out.println("Unable to send messages");
+							}
+						}).start();
+					}
+				}
+			}
+		});
 	}
 
 	public static void main(String[] args) {
