@@ -29,9 +29,12 @@ import javax.swing.AbstractButton;
 import javax.swing.ButtonGroup;
 import javax.swing.JFileChooser;
 import javax.swing.border.LineBorder;
+import javax.swing.event.TableModelEvent;
+import javax.swing.event.TableModelListener;
 import javax.swing.table.DefaultTableCellRenderer;
 import javax.swing.table.DefaultTableModel;
 import javax.swing.table.TableCellRenderer;
+import javax.swing.table.TableColumn;
 import javax.swing.JMenuBar;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
@@ -61,8 +64,12 @@ public class GUI {
 	private JPanel panelUsers;
 	private JScrollPane scrollPaneUsers;
 	private JScrollPane scrollPaneNotifications;
+	private DefaultTableCellRenderer centerRenderer;
 
 	public GUI() {
+		centerRenderer = new DefaultTableCellRenderer();
+		centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
+
 		initialize();
 	}
 
@@ -101,14 +108,15 @@ public class GUI {
 		panelNotifications.add(lblNotifications);
 
 		scrollPaneNotifications = new JScrollPane();
+		scrollPaneNotifications.setHorizontalScrollBarPolicy(ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER);
 		scrollPaneNotifications.setBounds(14, 35, 282, 268);
 		panelNotifications.add(scrollPaneNotifications);
 
-		DefaultTableCellRenderer centerRenderer = new DefaultTableCellRenderer();
-		centerRenderer.setHorizontalAlignment(SwingConstants.CENTER);
-
 		modelUsers = new DefaultTableModel(null, new String[] { "ID", "Username", "Action" });
 		tableUsers = new JTable(modelUsers);
+		tableUsers.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+		modelUsers.addTableModelListener(new ColumnWidthResizer(tableUsers, "Username", scrollPaneUsers.getWidth()));
+
 		tableUsers.addMouseListener(new CursorDefaultListener(scrollPaneUsers));
 		tableUsers.addMouseMotionListener(new CursorPointerListener(tableUsers, scrollPaneUsers, "Kick Out"));
 		tableUsers.getColumn("ID").setCellRenderer(centerRenderer);
@@ -119,6 +127,9 @@ public class GUI {
 
 		modelNotifications = new DefaultTableModel(null, new String[] { "UserID", "Message", "Action" });
 		tableNotifications = new JTable(modelNotifications);
+		tableNotifications.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+		modelNotifications.addTableModelListener(
+				new ColumnWidthResizer(tableNotifications, "Message", scrollPaneNotifications.getWidth()));
 		tableNotifications.addMouseListener(new CursorDefaultListener(scrollPaneNotifications));
 		tableNotifications.addMouseMotionListener(
 				new CursorPointerListener(tableNotifications, scrollPaneNotifications, "Approve"));
@@ -196,6 +207,9 @@ public class GUI {
 
 		modelUsers = new DefaultTableModel(new Object[][] {}, new String[] { "ID", "Username" });
 		tableUsers = new JTable(modelUsers);
+		tableUsers.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
+		modelUsers.addTableModelListener(new ColumnWidthResizer(tableUsers, "Username", scrollPaneUsers.getWidth()));
+		tableUsers.getColumn("ID").setCellRenderer(centerRenderer);
 		tableUsers.getColumn("Username").setCellRenderer(new MultilineTableCell());
 		tableUsers.setEnabled(false);
 		scrollPaneUsers.setViewportView(tableUsers);
@@ -240,6 +254,61 @@ public class GUI {
 		while (elements.hasMoreElements()) {
 			AbstractButton button = (AbstractButton) elements.nextElement();
 			button.addActionListener(selectBoardAction);
+		}
+	}
+
+	class ColumnWidthResizer implements TableModelListener {
+		private JTable table;
+		private String excludedColIdentifier;
+		private int includedColWidth;
+		private int parentWidth;
+		private int spacing = 16;
+
+		public ColumnWidthResizer(JTable table, String excludedColIdentifier, int parentWidth) {
+			this.table = table;
+			this.excludedColIdentifier = excludedColIdentifier;
+			this.parentWidth = parentWidth;
+		}
+
+		@Override
+		public void tableChanged(TableModelEvent e) {
+			includedColWidth = 0;
+			for (int column = 0; column < table.getColumnCount(); column++) {
+				TableColumn tableColumn = table.getColumnModel().getColumn(column);
+
+				if (excludedColIdentifier.equals(tableColumn.getIdentifier())) {
+					continue;
+				}
+
+				Object value = tableColumn.getHeaderValue();
+				TableCellRenderer renderer = tableColumn.getHeaderRenderer();
+				if (renderer == null) {
+					renderer = table.getTableHeader().getDefaultRenderer();
+				}
+				int colHeaderWidth = renderer.getTableCellRendererComponent(table, value, false, false, -1, column)
+						.getPreferredSize().width;
+
+				int preferredWidth = Math.max(tableColumn.getMinWidth(), colHeaderWidth);
+				int maxWidth = tableColumn.getMaxWidth();
+
+				for (int row = 0; row < table.getRowCount(); row++) {
+					TableCellRenderer cellRenderer = table.getCellRenderer(row, column);
+					Component c = table.prepareRenderer(cellRenderer, row, column);
+					int width = c.getPreferredSize().width + table.getIntercellSpacing().width;
+					preferredWidth = Math.max(preferredWidth, width);
+
+					// We've exceeded the maximum width, no need to check other rows
+					if (preferredWidth >= maxWidth) {
+						preferredWidth = maxWidth;
+						break;
+					}
+				}
+
+				int width = preferredWidth + spacing;
+				tableColumn.setPreferredWidth(width);
+				includedColWidth += width;
+			}
+			table.getColumn(excludedColIdentifier).setPreferredWidth(parentWidth - includedColWidth);
 		}
 	}
 
