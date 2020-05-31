@@ -117,11 +117,19 @@ public class Mediator extends UnicastRemoteObject implements IMediator {
 
 	public static void main(String[] args) {
 
+		Integer serverPort = null;
+		try {
+			serverPort = Integer.parseInt(args[0]);
+		} catch (Exception e) {
+			System.out.println("Usage: java -jar Server.jar <serverPort>");
+			System.exit(0);
+		}
+
 		try {
 			Mediator mediator = new Mediator();
-			Registry registry = LocateRegistry.getRegistry();
+			Registry registry = LocateRegistry.createRegistry(serverPort);
 			registry.bind(IMediator.REMOTE_OBJECT_NAME, mediator);
-			System.out.println("Shared White Board Ready");
+			System.out.format("Shared white board server ready on port %d%n", serverPort);
 
 			Runtime.getRuntime().addShutdownHook(new Thread(() -> {
 				try {
