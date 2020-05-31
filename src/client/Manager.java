@@ -206,8 +206,8 @@ public class Manager extends User {
 		ActionType actionType = ActionType.valueOf((String) jData.get("actionType"));
 		switch (actionType) {
 		case JOIN_REQUEST:
-			String msgFmt = "User <[%d] %s> request to join the board";
-			String msg = String.format(msgFmt, jData.get("id"), jData.get("username"));
+			String msgFmt = "User [%s] request to join the board";
+			String msg = String.format(msgFmt, jData.get("username"));
 			this.gui.modelNotifications.addRow(new Object[] { jData.get("id"), msg, "Approve" });
 			break;
 		default:
