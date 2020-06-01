@@ -182,7 +182,7 @@ public class Manager extends User {
 								data.put("actionType", ActionType.JOIN_REQUEST_APPROVED);
 								send(data.toString(), id);
 								data.put("actionType", ActionType.USER_LIST_UPDATE);
-								mediator.broadcast(data.toString(), -1);
+								mediator.broadcast(data.toString(), id);
 							}
 							if (option == JOptionPane.NO_OPTION) {
 								data.put("actionType", ActionType.JOIN_REQUEST_DECLINED);
