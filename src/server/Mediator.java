@@ -71,11 +71,13 @@ public class Mediator extends UnicastRemoteObject implements IMediator {
 	public LinkedList<String> getUsers() throws RemoteException {
 		LinkedList<String> jUsers = new LinkedList<>();
 		for (ICollaborator user : this.users.values()) {
-			HashMap<String, String> jUser = new HashMap<>();
-			jUser.put("id", Integer.toString(user.getId()));
-			jUser.put("username", user.getUsername());
-			jUser.put("isManager", Boolean.toString(manager != null && user.getId() == manager.getId()));
-			jUsers.add(new JSONObject(jUser).toString());
+			if (user.getIsJoined()) {
+				HashMap<String, String> jUser = new HashMap<>();
+				jUser.put("id", Integer.toString(user.getId()));
+				jUser.put("username", user.getUsername());
+				jUser.put("isManager", Boolean.toString(manager != null && user.getId() == manager.getId()));
+				jUsers.add(new JSONObject(jUser).toString());
+			}
 		}
 		return jUsers;
 	}

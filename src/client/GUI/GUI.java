@@ -112,7 +112,7 @@ public class GUI {
 		scrollPaneNotifications.setBounds(14, 35, 282, 268);
 		panelNotifications.add(scrollPaneNotifications);
 
-		modelUsers = new DefaultTableModel(null, new String[] { "ID", "Username", "Action" });
+		modelUsers = new DefaultTableModel(new Object[][] {}, new String[] { "ID", "Username", "Action" });
 		tableUsers = new JTable(modelUsers);
 		tableUsers.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		modelUsers.addTableModelListener(new ColumnWidthResizer(tableUsers, "Username", scrollPaneUsers.getWidth()));
@@ -125,7 +125,7 @@ public class GUI {
 		tableUsers.setEnabled(false);
 		scrollPaneUsers.setViewportView(tableUsers);
 
-		modelNotifications = new DefaultTableModel(null, new String[] { "UserID", "Message", "Action" });
+		modelNotifications = new DefaultTableModel(new Object[][] {}, new String[] { "UserID", "Message", "Action" });
 		tableNotifications = new JTable(modelNotifications);
 		tableNotifications.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		modelNotifications.addTableModelListener(

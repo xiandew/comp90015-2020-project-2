@@ -7,8 +7,10 @@ import java.rmi.RemoteException;
 
 public interface ICollaborator extends Remote {
 	public int getId() throws RemoteException;
-	
+
 	public String getUsername() throws RemoteException;
+
+	public boolean getIsJoined() throws RemoteException;
 
 	// Connect to a mediator
 	public void connect(String serverAddress, int serverPort) throws RemoteException, NotBoundException;

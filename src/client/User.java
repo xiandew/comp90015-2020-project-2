@@ -23,12 +23,14 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 	private static final long serialVersionUID = 1L;
 
 	protected IMediator mediator;
+	protected GUI gui;
 	protected int id;
 	private String username;
-	protected GUI gui;
+	private boolean isJoined;
 
 	protected User(String username, String serverAddress, int serverPort) throws RemoteException {
 		this.username = username;
+		this.isJoined = false;
 		this.gui = new GUI();
 
 		try {
@@ -67,13 +69,18 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 	}
 
 	@Override
-	public int getId() {
+	public int getId() throws RemoteException {
 		return this.id;
 	}
 
 	@Override
-	public String getUsername() {
+	public String getUsername() throws RemoteException {
 		return this.username;
+	}
+
+	@Override
+	public boolean getIsJoined() throws RemoteException {
+		return this.isJoined;
 	}
 
 	@Override
@@ -187,6 +194,7 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 		ActionType actionType = ActionType.valueOf((String) jData.get("actionType"));
 		switch (actionType) {
 		case JOIN_REQUEST_APPROVED:
+			this.isJoined = true;
 			this.updateBoard();
 			this.updateUserList();
 			this.broadcastUserListUpdate();

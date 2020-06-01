@@ -34,6 +34,11 @@ public class Manager extends User {
 	}
 
 	@Override
+	public boolean getIsJoined() throws RemoteException {
+		return true;
+	}
+
+	@Override
 	public void connect(String serverAddress, int serverPort) throws RemoteException, NotBoundException {
 		Registry registry = LocateRegistry.getRegistry(serverAddress, serverPort);
 		this.mediator = (IMediator) registry.lookup(IMediator.REMOTE_OBJECT_NAME);
