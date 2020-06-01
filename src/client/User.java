@@ -300,9 +300,8 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 
 		try {
 			new User(username, serverAddress, serverPort);
-		} catch (RemoteException e) {
+		} catch (Exception e) {
 			System.out.println("Cannot connect to the server");
-			e.printStackTrace();
 			System.exit(0);
 		}
 	}

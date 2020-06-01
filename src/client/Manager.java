@@ -261,7 +261,7 @@ public class Manager extends User {
 
 		try {
 			new Manager(username, serverAddress, serverPort);
-		} catch (RemoteException e) {
+		} catch (Exception e) {
 			System.out.println("Cannot connect to the server");
 			System.exit(0);
 		}
