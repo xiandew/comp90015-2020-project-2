@@ -237,25 +237,26 @@ public class User extends UnicastRemoteObject implements ICollaborator {
 		case KICKED_OUT:
 		case MANAGER_EXIT:
 		case SERVER_SHUTDOWN:
-			switch (actionType) {
-			case JOIN_REQUEST_DECLINED:
-				this.gui.showMessageDialog("The manager declined your join request");
-				break;
-			case KICKED_OUT:
-				this.gui.showMessageDialog("You are kicked out by the manager");
-				break;
-			case MANAGER_EXIT:
-				this.gui.showMessageDialog("The manager closed the board");
-				break;
-			case SERVER_SHUTDOWN:
-				this.gui.showMessageDialog("The server has been shutdown");
-				break;
-			default:
-				break;
-			}
-			// Exit the program in another thread as it may cause connection reset exception
-			// if not
 			new Thread(() -> {
+				// Prompt the dialog in another thread as it may block the whole process
+				switch (actionType) {
+				case JOIN_REQUEST_DECLINED:
+					this.gui.showMessageDialog("The manager declined your join request");
+					break;
+				case KICKED_OUT:
+					this.gui.showMessageDialog("You are kicked out by the manager");
+					break;
+				case MANAGER_EXIT:
+					this.gui.showMessageDialog("The manager closed the board");
+					break;
+				case SERVER_SHUTDOWN:
+					this.gui.showMessageDialog("The server has been shutdown");
+					break;
+				default:
+					break;
+				}
+				// Exit the program in another thread as it may cause connection reset exception
+				// if not
 				System.exit(0);
 			}).start();
 		default:
