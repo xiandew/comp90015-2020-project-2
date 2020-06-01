@@ -5,19 +5,10 @@ import java.util.LinkedList;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Cursor;
-import java.awt.Font;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseMotionAdapter;
-import java.awt.font.FontRenderContext;
-import java.awt.font.LineBreakMeasurer;
-import java.awt.font.TextLayout;
-import java.text.AttributedCharacterIterator;
-import java.text.AttributedString;
-import java.text.BreakIterator;
 import java.awt.event.ActionEvent;
 
 import javax.swing.JFrame;
@@ -120,9 +111,7 @@ public class GUI {
 		tableUsers.addMouseListener(new CursorDefaultListener(scrollPaneUsers));
 		tableUsers.addMouseMotionListener(new CursorPointerListener(tableUsers, scrollPaneUsers, "Kick Out"));
 		tableUsers.getColumn("ID").setCellRenderer(centerRenderer);
-		tableUsers.getColumn("Username").setCellRenderer(new MultilineTableCell());
 		tableUsers.getColumn("Action").setCellRenderer(centerRenderer);
-		tableUsers.setEnabled(false);
 		scrollPaneUsers.setViewportView(tableUsers);
 
 		modelNotifications = new DefaultTableModel(new Object[][] {}, new String[] { "UserID", "Message", "Action" });
@@ -134,9 +123,7 @@ public class GUI {
 		tableNotifications.addMouseMotionListener(
 				new CursorPointerListener(tableNotifications, scrollPaneNotifications, "Approve"));
 		tableNotifications.getColumn("UserID").setCellRenderer(centerRenderer);
-		tableNotifications.getColumn("Message").setCellRenderer(new MultilineTableCell());
 		tableNotifications.getColumn("Action").setCellRenderer(centerRenderer);
-		tableNotifications.setEnabled(false);
 		scrollPaneNotifications.setViewportView(tableNotifications);
 
 		// Resize user list panels
@@ -210,8 +197,6 @@ public class GUI {
 		tableUsers.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
 		modelUsers.addTableModelListener(new ColumnWidthResizer(tableUsers, "Username", scrollPaneUsers.getWidth()));
 		tableUsers.getColumn("ID").setCellRenderer(centerRenderer);
-		tableUsers.getColumn("Username").setCellRenderer(new MultilineTableCell());
-		tableUsers.setEnabled(false);
 		scrollPaneUsers.setViewportView(tableUsers);
 
 		ButtonGroup buttonGroupBoardActions = new ButtonGroup();
@@ -309,73 +294,6 @@ public class GUI {
 				includedColWidth += width;
 			}
 			table.getColumn(excludedColIdentifier).setPreferredWidth(parentWidth - includedColWidth);
-		}
-	}
-
-	public class MultilineTableCell implements TableCellRenderer {
-		class CellArea extends DefaultTableCellRenderer {
-			private static final long serialVersionUID = 1L;
-			private String text;
-			protected int rowIndex;
-			protected int columnIndex;
-			protected JTable table;
-			protected Font font;
-			private int paragraphStart, paragraphEnd;
-			private LineBreakMeasurer lineMeasurer;
-
-			public CellArea(String s, JTable tab, int row, int column, boolean isSelected) {
-				text = s;
-				rowIndex = row;
-				columnIndex = column;
-				table = tab;
-				font = table.getFont();
-				if (isSelected) {
-					setForeground(table.getSelectionForeground());
-					setBackground(table.getSelectionBackground());
-				}
-			}
-
-			public void paintComponent(Graphics gr) {
-				super.paintComponent(gr);
-				if (text != null && !text.isEmpty()) {
-					Graphics2D g = (Graphics2D) gr;
-					if (lineMeasurer == null) {
-						AttributedCharacterIterator paragraph = new AttributedString(text).getIterator();
-						paragraphStart = paragraph.getBeginIndex();
-						paragraphEnd = paragraph.getEndIndex();
-						FontRenderContext frc = g.getFontRenderContext();
-						lineMeasurer = new LineBreakMeasurer(paragraph, BreakIterator.getWordInstance(), frc);
-					}
-					float breakWidth = (float) table.getColumnModel().getColumn(columnIndex).getWidth();
-					float drawPosY = 0;
-					// Set position to the index of the first character in the paragraph.
-					lineMeasurer.setPosition(paragraphStart);
-					// Get lines until the entire paragraph has been displayed.
-					while (lineMeasurer.getPosition() < paragraphEnd) {
-						// Retrieve next layout. A cleverer program would also cache
-						// these layouts until the component is re-sized.
-						TextLayout layout = lineMeasurer.nextLayout(breakWidth);
-						// Compute pen x position. If the paragraph is right-to-left we
-						// will align the TextLayouts to the right edge of the panel.
-						// Note: this won't occur for the English text in this sample.
-						// Note: drawPosX is always where the LEFT of the text is placed.
-						float drawPosX = layout.isLeftToRight() ? 0 : breakWidth - layout.getAdvance();
-						// Move y-coordinate by the ascent of the layout.
-						drawPosY += layout.getAscent();
-						// Draw the TextLayout at (drawPosX, drawPosY).
-						layout.draw(g, drawPosX, drawPosY);
-						// Move y-coordinate in preparation for next layout.
-						drawPosY += layout.getDescent() + layout.getLeading();
-					}
-					table.setRowHeight(rowIndex, (int) drawPosY);
-				}
-			}
-		}
-
-		public Component getTableCellRendererComponent(JTable table, Object value, boolean isSelected, boolean hasFocus,
-				int row, int column) {
-			CellArea area = new CellArea(value.toString(), table, row, column, isSelected);
-			return area;
 		}
 	}
 
